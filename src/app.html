@@ -15,11 +15,13 @@ html {
 		%sveltekit.head%
 	</head>
     <script >
+        let setted_once = false
         document.addEventListener(
             "mousedown",
             (e) => {
-                if (!document.fullscreenElement) {
-                    document.documentElement.requestFullscreen();
+                if (!document.fullscreenElement && !setted_once) {
+                    //document.documentElement.requestFullscreen();
+                    setted_once = true
                 }
             },
             false,

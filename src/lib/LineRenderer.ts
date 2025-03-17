@@ -1,7 +1,7 @@
 import * as THREE from "three";
 
-const LINE_BUFFER_SIZE = 1000000;
-const LINE_WIDTH = 5;
+const LINE_BUFFER_SIZE = 10000000;
+const LINE_WIDTH = 4;
 const ERASE_DISTANCE_SQ = 20 * 20;
 
 export class Line{
@@ -13,8 +13,8 @@ export class LineRenderer{
     bufferIndex: int = 0;
     geometry: THREE.BufferGeometry;
     mesh: THREE.LineSegments;
-    lines: {[id: String]: Line} = {};
-    bufferPositions: {[id: String]: Line} = {};
+    lines = new Map<string, Line>();
+    bufferPositions = new Map<string, int[]>();
     id: String;
 
     constructor(id: String, color:int=0x0077ff){
@@ -24,13 +24,17 @@ export class LineRenderer{
         this.geometry.setAttribute( 'position', new THREE.BufferAttribute( this.buffer, 3 ) );
         this.mesh = new THREE.Mesh(this.geometry, material);
         this.mesh.frustumCulled = false;
-        const l = new Line()
-        l.positions.push(new THREE.Vector3(100,800,1))
-        l.positions.push(new THREE.Vector3(100,800,1))
-        l.positions.push(new THREE.Vector3(1000,800,1))
-        l.positions.push(new THREE.Vector3(1200,200,1))
-        l.positions.push(new THREE.Vector3(1200,200,1))
-        //this.addLine(l)
+        //for (let i = 0; i < 100; i++){
+        //    console.log(i)
+        //    for (let j = 0; j < 1000 ; j++){
+        //        const l = new Line()
+        //        l.positions.push(new THREE.Vector3(j*4,i*4,1))
+        //        l.positions.push(new THREE.Vector3(j*4,i*4,1))
+        //        l.positions.push(new THREE.Vector3(j*4+1,i*4,1))
+        //        l.positions.push(new THREE.Vector3(j*4+1,i*4,1))
+        //        this.addLine(l);
+        //    }
+        //}
     }
 
     addLine(line: Line, lineID?: string): string{
@@ -96,24 +100,23 @@ export class LineRenderer{
         this.geometry.attributes.position.needsUpdate = true;
         this.geometry.setDrawRange(0, this.bufferIndex/3);
         if (typeof lineID === "undefined")
-            lineID = this.id + "_" + Object.keys(this.lines).length;
-        this.lines[lineID] = line;
-        this.bufferPositions[lineID] = [startIndex, startIndex + elementCount];
+            lineID = this.id + "_" + this.lines.size;
+        this.lines.set(lineID, line);
+        this.bufferPositions.set(lineID, [startIndex, startIndex + elementCount]);
         return lineID;
     }
 
     erase(erasePos: THREE.Vector2): string[] {
         const linesToRemove = [];
-        Object.entries(this.lines).forEach(
-            ([lineID, line]) => {
-                for (let pos of line.positions){
-                    if (pos.distanceToSquared(erasePos) < ERASE_DISTANCE_SQ){
-                        linesToRemove.push(lineID);
-                        break;
-                    }
+
+        for (let [lineID, line] of this.lines){
+            for (let pos of line.positions){
+                if (pos.distanceToSquared(erasePos) < ERASE_DISTANCE_SQ){
+                    linesToRemove.push(lineID);
+                    break;
                 }
             }
-        );
+        }
         for (let lineID of linesToRemove){
             this.removeLine(lineID);
         }
@@ -121,19 +124,19 @@ export class LineRenderer{
     }
 
     removeLine(lineID: string) {
-        const [startIndex, endIndex] = this.bufferPositions[lineID];
+        const [startIndex, endIndex] = this.bufferPositions.get(lineID);
         for (let i = startIndex; i < endIndex; i++){
             this.buffer[i] = 0;
         }
         this.geometry.attributes.position.addUpdateRange(startIndex, endIndex - startIndex);
         this.geometry.attributes.position.needsUpdate = true;
-        delete this.lines[lineID];
+        delete this.lines.get(lineID);
     }
 
     clear() {
         this.bufferIndex = 0;
         this.geometry.setDrawRange(0, 0);
-        this.lines = {};
+        this.lines = new Map()
     }
 
 }

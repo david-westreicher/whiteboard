@@ -155,9 +155,9 @@
         const operation = data[0];
         if (operation === "bulk"){
             const [op, lines] = data;
-            Object.entries(lines).forEach(
-                ([lineID, line]) => lineRenderer.addLine(line, lineID)
-            );
+            for (let [lineID, line] of lines) {
+                lineRenderer.addLine(line, lineID);
+            }
         } else if(operation === "add-line") {
             const [op, lineID, line] = data;
             lineRenderer.addLine(line, lineID);
