@@ -5,6 +5,7 @@
         top: 0;
         left: 0;
         z-index: 0;
+        touch-action: none;
     }
 
     .buttons {
@@ -34,45 +35,41 @@
     import { onMount, onDestroy } from "svelte";
     import * as THREE from "three";
     import PEER from 'peerjs';
-    import {LineRenderer} from '$lib/LineRenderer'
-
+    import {LineRenderer, Line} from '$lib/LineRenderer'
 
     const PEER_HOST = "192.168.0.164";
-    const LINE_BUFFER_SIZE = 1000000;
     let canvas;
-    let scene, camera, renderer, animationFrameId, lineGeometry;
+    let scene, camera, renderer, animationFrameId;
     const globalConnections = [];
     let mouseDown = false;
     let middleMouseDown = false;
+    let rightMouseDown = false;
     let mousePos = {x: 0, y: 0};
     let windowPos = {x: 0, y: 0};
-    let linebuffer = new Float32Array( LINE_BUFFER_SIZE * 3 );
-    let linebufferIndex = 0;
     const lineRenderer = new LineRenderer();
+    const currentLineRenderer = new LineRenderer("", 0xff7700);
+    let currentLine;
+    let presenter;
 
     function initScene() {
         // Scene setup
         scene = new THREE.Scene();
-        camera = new THREE.OrthographicCamera(0,window.innerWidth, 0,window.innerHeight,-10000, 10000);
+        camera = new THREE.OrthographicCamera(0,window.innerWidth, 0,window.innerHeight,-1, 1);
         renderer = new THREE.WebGLRenderer({ canvas, antialias: true });
         renderer.setSize(window.innerWidth, window.innerHeight);
         document.body.appendChild(renderer.domElement);
 
-        const material = new THREE.MeshBasicMaterial({ color: 0x0077ff });
-
-        // Line geometry
-        lineGeometry = new THREE.BufferGeometry();
-        lineGeometry.setAttribute( 'position', new THREE.BufferAttribute( linebuffer, 3 ) );
-        const line = new THREE.LineSegments(lineGeometry, material);
-        line.frustumCulled = false;
-        scene.add(line);
-
-        // Start animation loop
+        scene.add(lineRenderer.mesh);
+        scene.add(currentLineRenderer.mesh);
         animate();
     }
 
     function animate() {
         animationFrameId = requestAnimationFrame(animate);
+        currentLineRenderer.clear();
+        if (currentLine && currentLine.positions.length > 0) {
+            currentLineRenderer.addLine(currentLine);
+        }
         renderer.render(scene, camera);
     }
 
@@ -84,10 +81,12 @@
         camera.updateProjectionMatrix();
     }
 
-    onMount(() => {
+    onMount(async () => {
+        presenter = await navigator.ink.requestPresenter({presentationArea: canvas});
         if (typeof window !== "undefined") {
             initScene();
             window.addEventListener("resize", resizeCanvas);
+            resizeCanvas();
         }
     });
 
@@ -100,53 +99,73 @@
     });
 
     function handleMouseDown(event){
-        if (event.button === 0) {
+        if (event.button === 0 && event.isPrimary) {
             mouseDown = true;
-        } else if (event.button === 1) {
+            currentLine = new Line();
+        } else if (event.button === 1 || !event.isPrimary) {
             middleMouseDown = true;
+        } else if (event.button === 2) {
+            rightMouseDown = true;
         }
-        mousePos.x = event.clientX;
-        mousePos.y = event.clientY;
+        if (event.isPrimary) {
+            mousePos.x = event.x;
+            mousePos.y = event.y;
+        }
     }
     function handleMouseUp(event){
         mouseDown = false;
         middleMouseDown = false;
+        rightMouseDown = false;
         windowPos.x = camera.position.x;
         windowPos.y = camera.position.y;
+        if (currentLine && currentLine.positions.length > 0) {
+            const lineID = lineRenderer.addLine(currentLine);
+            globalConnections.forEach(conn => {
+                conn.send(["add-line", lineID, currentLine]);
+            });
+            currentLine = null;
+        }
     }
     function handleMouseMove(event){
+        //TODO const s_button_press = event.button === 1 && event.pressure === 0;
+        if (!event.isPrimary ) return;
         if (middleMouseDown){
-            camera.position.x = -event.clientX + mousePos.x + windowPos.x;
-            camera.position.y = -event.clientY + mousePos.y + windowPos.y;
+            camera.position.x = -event.x + mousePos.x + windowPos.x;
+            camera.position.y = -event.y + mousePos.y + windowPos.y;
+        }
+        if (rightMouseDown){
+            const removedLines = lineRenderer.erase(new THREE.Vector3(event.x + camera.position.x, event.y + camera.position.y));
+            if (removedLines.length > 0) {
+                globalConnections.forEach(conn => {
+                    conn.send(["remove-lines", removedLines]);
+                });
+            }
         }
         if (!mouseDown) return;
-        linebuffer[linebufferIndex++] = mousePos.x + camera.position.x;
-        linebuffer[linebufferIndex++] = mousePos.y + camera.position.y;
-        linebuffer[linebufferIndex++] = 0;
-        linebuffer[linebufferIndex++] = event.clientX + camera.position.x;
-        linebuffer[linebufferIndex++] = event.clientY + camera.position.y;
-        linebuffer[linebufferIndex++] = 0;
-        linebufferIndex = linebufferIndex % (LINE_BUFFER_SIZE * 3);
-        mousePos.x = event.clientX;
-        mousePos.y = event.clientY;
-        lineGeometry.attributes.position.addUpdateRange(linebufferIndex - 6, 6);
-        lineGeometry.attributes.position.needsUpdate = true;
-        lineGeometry.setDrawRange(0, linebufferIndex / 3);
-        globalConnections.forEach(conn => {
-            conn.send(linebuffer.subarray(linebufferIndex - 6, linebufferIndex))
+        presenter.updateInkTrailStartPoint(event, {
+            color: "#FF7700",
+            diameter: 5
         });
+        if (currentLine)
+            //TODO: for (event of event.getCoalescedEvents())
+            currentLine.positions.push(new THREE.Vector3(event.x + camera.position.x, event.y + camera.position.y, event.pressure))
     }
 
     function receiveData(data, peer){
-        console.log(data, peer)
-        const floats = new Float32Array(data);
-        for (let i = 0; i < floats.length; i+=3){
-            linebuffer[linebufferIndex++] = floats[i];
-            linebuffer[linebufferIndex++] = floats[i+1];
-            linebuffer[linebufferIndex++] = floats[i+2];
-            linebufferIndex = linebufferIndex % (LINE_BUFFER_SIZE * 3);
-            lineGeometry.attributes.position.needsUpdate = true;
-            lineGeometry.setDrawRange(0, linebufferIndex / 3);
+        const operation = data[0];
+        if (operation === "bulk"){
+            const [op, lines] = data;
+            Object.entries(lines).forEach(
+                ([lineID, line]) => lineRenderer.addLine(line, lineID)
+            );
+        } else if(operation === "add-line") {
+            const [op, lineID, line] = data;
+            lineRenderer.addLine(line, lineID);
+        } else if(operation === "remove-lines") {
+            const [op, lineIDs] = data;
+            for (let lineID of lineIDs) {
+                lineRenderer.removeLine(lineID);
+            }
         }
         if (peer) {
             globalConnections.forEach(conn => {
@@ -158,14 +177,14 @@
 
     function handleServer(){
         const peer = new PEER('asd', {'host':PEER_HOST, 'port':9000});
+        lineRenderer.id = 'asd';
         console.log("i'm server")
         peer.on("connection", (conn) => {
             console.log("connection opened");
             globalConnections.push(conn);
             conn.on("data", (data) => receiveData(data, conn.peer));
             setTimeout(() => {
-                conn.send(linebuffer.subarray(0, linebufferIndex));
-                console.log(conn.bufferSize);
+                conn.send(["bulk", lineRenderer.lines])
             }, 100);
         });
     }
@@ -173,6 +192,7 @@
         const peer = new PEER({'host':PEER_HOST, 'port':9000});
         console.log("i'm client")
         peer.on("open", (id) => {
+            lineRenderer.id = id;
             const conn = peer.connect('asd');
             conn.on("open", () => {
                 conn.on("data", receiveData);
@@ -185,10 +205,12 @@
 <canvas 
     bind:this={canvas}
     style="position: absolute; top: 0; left: 0; width: 100vw; height: 100vh;"
-    on:mousedown={handleMouseDown}
-    on:mouseup={handleMouseUp}
-    on:mousemove={handleMouseMove}
-    on:mouseleave={handleMouseUp}
+    on:pointerdown={handleMouseDown}
+    on:pointermove={handleMouseMove}
+    on:pointerup={handleMouseUp}
+    on:pointerleave={handleMouseUp}
+    on:contextmenu|preventDefault
+    on:touchmove|preventDefault
 ></canvas>
 <div class="buttons">
     <button on:click={handleServer}>Server</button>
