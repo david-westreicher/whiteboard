@@ -10,14 +10,14 @@ export class Line{
 
 export class LineRenderer{
     buffer: Float32Array = new Float32Array( LINE_BUFFER_SIZE * 3 );
-    bufferIndex: int = 0;
+    bufferIndex: number = 0;
     geometry: THREE.BufferGeometry;
-    mesh: THREE.LineSegments;
+    mesh: THREE.Mesh;
     lines = new Map<string, Line>();
-    bufferPositions = new Map<string, int[]>();
+    bufferPositions = new Map<string, [number, number]>();
     id: String;
 
-    constructor(id: String, color:int=0x0077ff){
+    constructor(id: String, color:number=0x0077ff){
         this.id = id;
         this.geometry = new THREE.BufferGeometry();
         const material = new THREE.MeshBasicMaterial( { color: color , wireframe: false, side: THREE.DoubleSide} );
@@ -78,8 +78,8 @@ export class LineRenderer{
 
             if (norm1.dot(dir2) >= 0) {
                 for (let p of [a,b,c,b,c,m2,b,m1,m2]){
-                    this.buffer[this.bufferIndex++] = p.x;
-                    this.buffer[this.bufferIndex++] = p.y;
+                    this.buffer[this.bufferIndex++] = p!.x;
+                    this.buffer[this.bufferIndex++] = p!.y;
                     this.buffer[this.bufferIndex++] = 0;
                     elementCount += 3;
                 }
@@ -87,8 +87,8 @@ export class LineRenderer{
                 c = m2
             }else{
                 for (let p of [a,c,d,d,m2,b,a,b,d]){
-                    this.buffer[this.bufferIndex++] = p.x;
-                    this.buffer[this.bufferIndex++] = p.y;
+                    this.buffer[this.bufferIndex++] = p!.x;
+                    this.buffer[this.bufferIndex++] = p!.y;
                     this.buffer[this.bufferIndex++] = 0;
                     elementCount += 3;
                 }
@@ -106,7 +106,7 @@ export class LineRenderer{
         return lineID;
     }
 
-    erase(erasePos: THREE.Vector2): string[] {
+    erase(erasePos: THREE.Vector3): string[] {
         const linesToRemove = [];
 
         for (let [lineID, line] of this.lines){
@@ -124,13 +124,13 @@ export class LineRenderer{
     }
 
     removeLine(lineID: string) {
-        const [startIndex, endIndex] = this.bufferPositions.get(lineID);
+        const [startIndex, endIndex] = this.bufferPositions.get(lineID) || [0, 0];
         for (let i = startIndex; i < endIndex; i++){
             this.buffer[i] = 0;
         }
         this.geometry.attributes.position.addUpdateRange(startIndex, endIndex - startIndex);
         this.geometry.attributes.position.needsUpdate = true;
-        delete this.lines.get(lineID);
+        this.lines.delete(lineID);
     }
 
     clear() {

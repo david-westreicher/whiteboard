@@ -4,9 +4,10 @@
 	import * as THREE from 'three';
 	import { LineRenderer, Line } from '$lib/LineRenderer';
 
+	let { usepen } = $props();
 	let canvas: any;
 	let scene: THREE.Scene;
-	let camera: THREE.Camera;
+	let camera: THREE.OrthographicCamera;
 	let renderer: THREE.WebGLRenderer;
 	let animationFrameId: number = 0;
 	let mouseDown = false;
@@ -111,7 +112,7 @@
 			camera.position.x = -event.x + mousePos.x + windowPos.x;
 			camera.position.y = -event.y + mousePos.y + windowPos.y;
 		}
-		if (rightMouseDown) {
+		if (rightMouseDown || (mouseDown && !usepen)) {
 			const removedLines = lineRenderer.erase(
 				new THREE.Vector3(event.x + camera.position.x, event.y + camera.position.y)
 			);
@@ -121,7 +122,7 @@
 				});
 			}
 		}
-		if (!mouseDown) return;
+		if (!mouseDown || !usepen) return;
 		presenter.updateInkTrailStartPoint(event, {
 			color: '#FF7700',
 			diameter: 5
@@ -133,7 +134,7 @@
 			);
 	}
 
-	function receiveData(data, peer) {
+	function receiveData(data: any, peer: string) {
 		console.log(data);
 		const operation = data[0];
 		if (operation === 'bulk') {

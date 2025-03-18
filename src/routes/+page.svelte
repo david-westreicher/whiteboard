@@ -19,18 +19,16 @@
 			peerConnection.initClient(serverID);
 		}
 		peerConnection.onConnectionSubscriber.push(() => {
-			const mode = peerConnection.isServer ? 'server' : 'client';
-			window.location.hash = `#${mode}.${peerConnection.serverID}`;
+			const mode = peerConnection!.isServer ? 'server' : 'client';
+			window.location.hash = `#${mode}.${peerConnection!.serverID}`;
 		});
 	});
 
 	function handlePen() {
 		usePen = true;
-		console.log('pen');
 	}
 	function handleEraser() {
 		usePen = false;
-		console.log('eraser');
 	}
 	function handleFullScreen() {
 		if (!document.fullscreenElement) {
@@ -73,7 +71,7 @@
 					</button>
 				</div>
 			</nav>
-			<Drawer />
+			<Drawer usepen={usePen} />
 		</div>
 	{/if}
 </div>
@@ -90,6 +88,8 @@
 		display: flex;
 		justify-content: space-between;
 		align-items: center;
+		backdrop-filter: blur(6px);
+		background: rgba(255, 255, 255, 0.2);
 	}
 	nav div {
 		display: flex;

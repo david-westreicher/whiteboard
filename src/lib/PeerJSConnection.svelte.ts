@@ -1,5 +1,5 @@
 import PEER from 'peerjs';
-const PEER_HOST = "192.168.0.164";
+const PEER_HOST = "whiteboard-454109.ew.r.appspot.com";
 import { writable } from 'svelte/store';
 
 
@@ -9,13 +9,13 @@ export class PeerJSConnection {
     $ready: boolean = $state(false);
     peer: PEER;
     host: string;
-    port: int;
+    port: number;
     serverID: string = "";
     isServer: boolean = false;
     onConnectionSubscriber: any[] = [console.log];
     onDataSubscriber: any[] = [];
 
-    constructor(host: string, port :int) {
+    constructor(host: string, port :number) {
         this.host = host;
         this.port = port;
     }
@@ -48,7 +48,7 @@ export class PeerJSConnection {
         this.isServer = false;
         this.serverID = serverID;
         this.peer = new PEER({ host: this.host, port: this.port });
-        this.onConnectionSubscriber.push((conn)=>{
+        this.onConnectionSubscriber.push((conn: any)=>{
             this.$ready = true;
         })
         this.peer.on('open', (id) => {
@@ -67,7 +67,7 @@ export class PeerJSConnection {
                 subscriber(conn);
             });
         });
-        conn.on('data', (data) => {
+        conn.on('data', (data: any) => {
             this.onDataSubscriber.forEach((subscriber) => {
                 let peer = this.isServer ? conn.peer : undefined;
                 subscriber(data, peer);
@@ -76,18 +76,18 @@ export class PeerJSConnection {
         conn.on('close', () => this.removeConnection(conn));
     }
 
-    removeConnection(conn: Any) {
+    removeConnection(conn: any) {
         console.log(`remove connection ${conn.peer}`);
         const index = this.connections.indexOf(conn);
         this.connections.splice(index, 1);
     }
 }
 
-let singletonPeerConnection = null;
+let singletonPeerConnection: PeerJSConnection|null = null;
 
 export function getPeerConnection(): PeerJSConnection {
     if (singletonPeerConnection == null) {
-        singletonPeerConnection = new PeerJSConnection(PEER_HOST, 9000);
+        singletonPeerConnection = new PeerJSConnection(PEER_HOST, 80);
     }
     return singletonPeerConnection;
 }
