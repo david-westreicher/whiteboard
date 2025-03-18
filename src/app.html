@@ -3,7 +3,6 @@
 html {
     overflow: hidden;
     overscroll-behavior: none;
-    background-color: #000000;
 }
 </style>
 <html lang="en">
@@ -11,23 +10,27 @@ html {
 		<meta charset="utf-8" />
 		<link rel="icon" href="%sveltekit.assets%/favicon.png" />
         <meta name="viewport" content="minimal-ui, width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+        <meta name="color-scheme" content="dark light">
+        <link rel="stylesheet" href="/shared.css" />
 
 		%sveltekit.head%
 	</head>
-    <script >
-        let setted_once = false
-        document.addEventListener(
-            "mousedown",
-            (e) => {
-                if (!document.fullscreenElement && !setted_once) {
-                    //document.documentElement.requestFullscreen();
-                    setted_once = true
-                }
-            },
-            false,
-        );
-    </script>
 	<body data-sveltekit-preload-data="hover">
+        <script >
+            let setted_once = false
+            document.addEventListener(
+                "mousedown",
+                (e) => {
+                    if (!document.fullscreenElement && !setted_once) {
+                        //document.documentElement.requestFullscreen();
+                        setted_once = true
+                    }
+                },
+                false,
+            );	
+            document.documentElement.classList.remove('light', 'dark');
+            document.documentElement.classList.add('dark' || 'light');
+        </script>
 		<div style="display: contents">%sveltekit.body%</div>
 	</body>
 </html>
