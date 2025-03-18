@@ -1,7 +1,8 @@
 import PEER from 'peerjs';
-const PEER_HOST = "whiteboard-454109.ew.r.appspot.com";
 import { writable } from 'svelte/store';
 
+const PEER_HOST = "whiteboard-454109.ew.r.appspot.com";
+const PEER_PORT = 443
 
 export class PeerJSConnection {
     connections: any[] = $state([]);
@@ -87,7 +88,7 @@ let singletonPeerConnection: PeerJSConnection|null = null;
 
 export function getPeerConnection(): PeerJSConnection {
     if (singletonPeerConnection == null) {
-        singletonPeerConnection = new PeerJSConnection(PEER_HOST, 80);
+        singletonPeerConnection = new PeerJSConnection(PEER_HOST, PEER_PORT);
     }
     return singletonPeerConnection;
 }
