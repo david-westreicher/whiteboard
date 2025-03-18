@@ -10,11 +10,11 @@
 	function handleHost() {
 		connecting = true;
 		peerConnection = getPeerConnection();
-		console.log(peerConnection.$id);
-		peerConnection.initHost((id) => {
-			console.log(id);
+		peerConnection.onConnectionSubscriber.push((_: any) => {
+			console.log('connected');
 			connecting = false;
 		});
+		peerConnection.initHost();
 	}
 	function handleClient() {
 		connecting = true;
@@ -23,9 +23,7 @@
 			console.log('connected');
 			connecting = false;
 		});
-		peerConnection.initClient(peerID, (id) => {
-			console.log(id);
-		});
+		peerConnection.initClient(peerID);
 	}
 </script>
 

@@ -4,31 +4,38 @@ import { writable } from 'svelte/store';
 
 
 export class PeerJSConnection {
-    peer: PEER;
-    connections: any[] = [];
-    host: string;
-    port: int;
+    connections: any[] = $state([]);
     $id: string = $state("");
     $ready: boolean = $state(false);
+    peer: PEER;
+    host: string;
+    port: int;
+    serverID: string = "";
     isServer: boolean = false;
     onConnectionSubscriber: any[] = [console.log];
     onDataSubscriber: any[] = [];
 
-    constructor(host: string, port :int, id?: string) {
+    constructor(host: string, port :int) {
         this.host = host;
         this.port = port;
     }
 
-    initHost(
-        onOpen: (id:string) => void,
-    )
+    initHost(serverID?: string)
     {
+        console.log(serverID)
         this.isServer = true;
-        this.peer = new PEER(this.id || "asd", { host: this.host, port: this.port });
+        if (serverID){
+            this.peer = new PEER(serverID, { host: this.host, port: this.port });
+        }else{
+            this.peer = new PEER({ host: this.host, port: this.port });
+        }
         this.peer.on('open', (id: string) => {
             this.$id = id;
+            this.serverID = id;
+            this.onConnectionSubscriber.forEach((subscriber) => {
+                subscriber();
+            });
 			console.log(`peerjs connection opened ${id}`);
-            onOpen(id);
             this.$ready = true;
         });
 		this.peer.on('connection', (conn) => {
@@ -36,12 +43,10 @@ export class PeerJSConnection {
 		});
     }
 
-    initClient(
-        peerID: string,
-        onOpen: (id:string) => void,
-    )
+    initClient(serverID: string)
     {
         this.isServer = false;
+        this.serverID = serverID;
         this.peer = new PEER({ host: this.host, port: this.port });
         this.onConnectionSubscriber.push((conn)=>{
             this.$ready = true;
@@ -49,9 +54,8 @@ export class PeerJSConnection {
         this.peer.on('open', (id) => {
             this.$id = id;
 			console.log(`peerjs connection opened ${id}`);
-            onOpen(id);
-			console.log(`connect to ${peerID}`);
-            const conn = this.peer.connect(peerID);
+			console.log(`connect to ${serverID}`);
+            const conn = this.peer.connect(serverID);
             this.setupConnection(conn);
         });
     }
@@ -65,7 +69,8 @@ export class PeerJSConnection {
         });
         conn.on('data', (data) => {
             this.onDataSubscriber.forEach((subscriber) => {
-                subscriber(data);
+                let peer = this.isServer ? conn.peer : undefined;
+                subscriber(data, peer);
             });
         });
         conn.on('close', () => this.removeConnection(conn));
