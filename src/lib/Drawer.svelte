@@ -18,7 +18,7 @@
 	let lineRenderer: LineRenderer;
 	let peerConnection: PeerJSConnection | null = null;
 	let globalConnections: any[] = [];
-	const currentLineRenderer = new LineRenderer('', 0xff7700, 10000);
+	const currentLineRenderer = new LineRenderer('', 0xff7700, 60000, false);
 	let currentLine: Line | null;
 	let presenter: any | null = null;
 
@@ -83,6 +83,14 @@
 		if (event.button === 0 && event.isPrimary) {
 			mouseDown = true;
 			currentLine = new Line();
+			if (usepen)
+				currentLine.positions.push(
+					new THREE.Vector3(
+						event.x + camera.position.x,
+						event.y + camera.position.y,
+						event.pressure
+					)
+				);
 		} else if (event.button === 1 || !event.isPrimary) {
 			middleMouseDown = true;
 		} else if (event.button === 2) {

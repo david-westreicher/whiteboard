@@ -3,6 +3,7 @@ import * as THREE from "three";
 const LINE_BUFFER_SIZE = 10000000;
 const LINE_WIDTH = 4;
 const ERASE_DISTANCE_SQ = 20 * 20;
+const MAX_FAN_STEPS = 4;
 
 export class Line{
     positions: THREE.Vector3[] = [];
@@ -45,58 +46,56 @@ export class LineRenderer{
         for (let i = 0; i < line.positions.length; i++){
             line.positions[i] = new THREE.Vector3(line.positions[i].x, line.positions[i].y, line.positions[i].z);
         }
-        let a = null;
-        let c = null;
-        for (let i = 1; i < line.positions.length-1; i++){
-            const p0 = line.positions[i-1];
+        // draw begin circle
+        const start = new THREE.Vector2(line.positions[0].x, line.positions[0].y);
+        const startWidth = ((line.positions.length == 1) ? 0.5 : 0.5 ) * LINE_WIDTH * line.positions[0].z;
+        const startCircle = start.clone().add(new THREE.Vector2(0, startWidth));
+        elementCount += this.drawFan(start, startCircle, 2 * Math.PI, MAX_FAN_STEPS * 2);
+
+        // draw rest of line
+        for (let i = 0; i < line.positions.length; i++){
+            const p0 = i > 0 ? line.positions[i-1] : line.positions[0];
             const p1 = line.positions[i];
-            const p2 = line.positions[i+1];
+            const p2 = i+1 < line.positions.length ? line.positions[i+1] : line.positions[i];
             /*
-                A      ^     B    M2
-                     n1|        /
+                A      ^     B
+                     n1|
                 p0 --------- p1
-                           / |
-                C        M1 D| ->
+                             |
+                C           D| ->
                              | n2
                              p2
 
                 (a,b,c), (c,m1,b), (m1, m2, b)
                 (a,c,d), (d,m1,b), (m1, m2, b)
             */  
-            const width = p1.z;
-            const dir1 = p1.clone().sub(p0).normalize().multiplyScalar(LINE_WIDTH/2 * width);
-            const dir2 = p2.clone().sub(p1).normalize().multiplyScalar(LINE_WIDTH/2 * width);
+            const width0 = p0.z;
+            const width1 = p1.z;
+            const dir1 = p1.clone().sub(p0).normalize().multiplyScalar(LINE_WIDTH/2 * width0);
+            const dir2 = p2.clone().sub(p1).normalize().multiplyScalar(LINE_WIDTH/2 * width1);
             const norm1 = new THREE.Vector3(-dir1.y, dir1.x,0);
             const norm2 = new THREE.Vector3(-dir2.y, dir2.x,0);
-            const norm = norm1.clone().add(norm2).normalize().multiplyScalar(LINE_WIDTH/2 * width);
-            if(a == null){
-                a = p0.clone().sub(norm1);
-                c = p0.clone().add(norm1);
-            }
+            const a = p0.clone().sub(norm1);
+            const c = p0.clone().add(norm1);
+            norm1.multiplyScalar(width1 / width0);
             const b = p1.clone().sub(norm1);
             const d = p1.clone().add(norm1);
-            const m2 = p1.clone().add(norm);
-            const m1 = p1.clone().sub(norm);
-
-            if (norm1.dot(dir2) >= 0) {
-                for (let p of [a,b,c,b,c,m2,b,m1,m2]){
-                    this.buffer[this.bufferIndex++] = p!.x;
-                    this.buffer[this.bufferIndex++] = p!.y;
-                    this.buffer[this.bufferIndex++] = 0;
-                    elementCount += 3;
-                }
-                a = m1
-                c = m2
-            }else{
-                for (let p of [a,c,d,d,m2,b,a,b,d]){
-                    this.buffer[this.bufferIndex++] = p!.x;
-                    this.buffer[this.bufferIndex++] = p!.y;
-                    this.buffer[this.bufferIndex++] = 0;
-                    elementCount += 3;
-                }
-                a = b
-                c = m2
+            for (let p of [a,b,c,b,d,c]){
+                this.buffer[this.bufferIndex++] = p!.x;
+                this.buffer[this.bufferIndex++] = p!.y;
+                this.buffer[this.bufferIndex++] = 0;
+                elementCount += 3;
             }
+
+            const leftBending = norm1.dot(dir2) >= 0;
+            const center = new THREE.Vector2(p1.x, p1.y);
+            let prevFanPoint = leftBending ? new THREE.Vector2(b.x, b.y) : new THREE.Vector2(d.x, d.y) ;
+            let angle = norm1.angleTo(norm2) * (leftBending ? 1: -1);
+            if (i == line.positions.length-1){
+                angle = Math.PI;
+            }
+            const fanSteps = Math.max(1, Math.min(MAX_FAN_STEPS, Math.ceil(4 * Math.abs(angle) / Math.PI)))
+            elementCount += this.drawFan(center, prevFanPoint, angle, fanSteps);
         }
         this.geometry.attributes.position.addUpdateRange(startIndex, elementCount);
         this.geometry.attributes.position.needsUpdate = true;
@@ -106,6 +105,21 @@ export class LineRenderer{
         this.lines.set(lineID, line);
         this.bufferPositions.set(lineID, [startIndex, startIndex + elementCount]);
         return lineID;
+    }
+
+    drawFan(center: Vector2, prevFanPoint: Vector2, angle: number, fanSteps: number): number{
+        let elementCount = 0;
+        for (let t = 0; t < fanSteps; t++){
+            const nextFanPoint = prevFanPoint.clone().rotateAround(center, angle / fanSteps)
+            for (let p of [prevFanPoint, center, nextFanPoint]){
+                this.buffer[this.bufferIndex++] = p!.x;
+                this.buffer[this.bufferIndex++] = p!.y;
+                this.buffer[this.bufferIndex++] = 0;
+                elementCount += 3;
+            }
+            prevFanPoint = nextFanPoint;
+        }
+        return elementCount;
     }
 
     erase(erasePos: THREE.Vector3): string[] {
