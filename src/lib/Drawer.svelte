@@ -18,7 +18,7 @@
 	let lineRenderer: LineRenderer;
 	let peerConnection: PeerJSConnection | null = null;
 	let globalConnections: any[] = [];
-	const currentLineRenderer = new LineRenderer('', 0xff7700);
+	const currentLineRenderer = new LineRenderer('', 0xff7700, 10000);
 	let currentLine: Line | null;
 	let presenter: any | null = null;
 

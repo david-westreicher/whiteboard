@@ -9,7 +9,7 @@ export class Line{
 }
 
 export class LineRenderer{
-    buffer: Float32Array = new Float32Array( LINE_BUFFER_SIZE * 3 );
+    buffer: Float32Array;
     bufferIndex: number = 0;
     geometry: THREE.BufferGeometry;
     mesh: THREE.Mesh;
@@ -18,8 +18,9 @@ export class LineRenderer{
     id: String;
     lineID: number = 0;
 
-    constructor(id: String, color:number=0x0077ff){
+    constructor(id: String, color:number=0x0077ff, buffer_size:number=LINE_BUFFER_SIZE){
         this.id = id;
+        this.buffer = new Float32Array( buffer_size * 3 );
         this.geometry = new THREE.BufferGeometry();
         const material = new THREE.MeshBasicMaterial( { color: color , wireframe: false, side: THREE.DoubleSide} );
         this.geometry.setAttribute( 'position', new THREE.BufferAttribute( this.buffer, 3 ) );
@@ -137,7 +138,7 @@ export class LineRenderer{
     clear() {
         this.bufferIndex = 0;
         this.geometry.setDrawRange(0, 0);
-        this.lines = new Map()
+        this.lines.clear();
     }
 
 }
