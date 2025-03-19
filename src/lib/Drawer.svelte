@@ -20,7 +20,7 @@
 	let globalConnections: any[] = [];
 	const currentLineRenderer = new LineRenderer('', 0xff7700);
 	let currentLine: Line | null;
-	let presenter: any;
+	let presenter: any | null = null;
 
 	function initScene() {
 		// Scene setup
@@ -61,7 +61,9 @@
 	}
 
 	onMount(async () => {
-		presenter = await navigator.ink.requestPresenter({ presentationArea: canvas });
+		if (navigator.ink !== undefined) {
+			presenter = await navigator.ink.requestPresenter({ presentationArea: canvas });
+		}
 		if (typeof window !== 'undefined') {
 			initScene();
 			window.addEventListener('resize', resizeCanvas);
@@ -123,10 +125,11 @@
 			}
 		}
 		if (!mouseDown || !usepen) return;
-		presenter.updateInkTrailStartPoint(event, {
-			color: '#FF7700',
-			diameter: 5
-		});
+		if (presenter !== null)
+			presenter.updateInkTrailStartPoint(event, {
+				color: '#FF7700',
+				diameter: 5
+			});
 		if (currentLine)
 			//TODO: for (event of event.getCoalescedEvents())
 			currentLine.positions.push(
