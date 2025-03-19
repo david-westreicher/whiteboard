@@ -16,6 +16,7 @@ export class LineRenderer{
     lines = new Map<string, Line>();
     bufferPositions = new Map<string, [number, number]>();
     id: String;
+    lineID: number = 0;
 
     constructor(id: String, color:number=0x0077ff){
         this.id = id;
@@ -100,7 +101,7 @@ export class LineRenderer{
         this.geometry.attributes.position.needsUpdate = true;
         this.geometry.setDrawRange(0, this.bufferIndex/3);
         if (typeof lineID === "undefined")
-            lineID = this.id + "_" + this.lines.size;
+            lineID = this.id + "_" + this.lineID++;
         this.lines.set(lineID, line);
         this.bufferPositions.set(lineID, [startIndex, startIndex + elementCount]);
         return lineID;
