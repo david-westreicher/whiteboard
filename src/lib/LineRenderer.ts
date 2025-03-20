@@ -1,7 +1,6 @@
 import * as THREE from "three";
 
 const LINE_BUFFER_SIZE = 10000000;
-const LINE_WIDTH = 4;
 const ERASE_DISTANCE_SQ = 20 * 20;
 const MAX_FAN_STEPS = 4;
 
@@ -48,7 +47,7 @@ export class LineRenderer{
         }
         // draw begin circle
         const start = new THREE.Vector2(line.positions[0].x, line.positions[0].y);
-        const startWidth = ((line.positions.length == 1) ? 0.5 : 0.5 ) * LINE_WIDTH * line.positions[0].z;
+        const startWidth = 0.5*line.positions[0].z;
         const startCircle = start.clone().add(new THREE.Vector2(0, startWidth));
         elementCount += this.drawFan(start, startCircle, 2 * Math.PI, MAX_FAN_STEPS * 2);
 
@@ -71,8 +70,8 @@ export class LineRenderer{
             */  
             const width0 = p0.z;
             const width1 = p1.z;
-            const dir1 = p1.clone().sub(p0).normalize().multiplyScalar(LINE_WIDTH/2 * width0);
-            const dir2 = p2.clone().sub(p1).normalize().multiplyScalar(LINE_WIDTH/2 * width1);
+            const dir1 = p1.clone().sub(p0).normalize().multiplyScalar(width0 * 0.5);
+            const dir2 = p2.clone().sub(p1).normalize().multiplyScalar(width1 * 0.5);
             const norm1 = new THREE.Vector3(-dir1.y, dir1.x,0);
             const norm2 = new THREE.Vector3(-dir2.y, dir2.x,0);
             const a = p0.clone().sub(norm1);
@@ -122,12 +121,13 @@ export class LineRenderer{
         return elementCount;
     }
 
-    erase(erasePos: THREE.Vector3): string[] {
+    erase(erasePos: THREE.Vector2): string[] {
         const linesToRemove = [];
+        const posCache = new THREE.Vector2();
 
         for (let [lineID, line] of this.lines){
             for (let pos of line.positions){
-                if (pos.distanceToSquared(erasePos) < ERASE_DISTANCE_SQ){
+                if (posCache.copy(pos).distanceToSquared(erasePos) < ERASE_DISTANCE_SQ){
                     linesToRemove.push(lineID);
                     break;
                 }

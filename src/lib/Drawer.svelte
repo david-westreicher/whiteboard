@@ -4,7 +4,7 @@
 	import * as THREE from 'three';
 	import { LineRenderer, Line } from '$lib/LineRenderer';
 
-	let { usepen } = $props();
+	let { usepen, linewidth }: { usepen: boolean; linewidth: number } = $props();
 	let canvas: any;
 	let scene: THREE.Scene;
 	let camera: THREE.OrthographicCamera;
@@ -88,7 +88,7 @@
 					new THREE.Vector3(
 						event.x + camera.position.x,
 						event.y + camera.position.y,
-						event.pressure
+						event.pressure * linewidth
 					)
 				);
 		} else if (event.button === 1 || !event.isPrimary) {
@@ -124,7 +124,7 @@
 		}
 		if (rightMouseDown || (mouseDown && !usepen)) {
 			const removedLines = lineRenderer.erase(
-				new THREE.Vector3(event.x + camera.position.x, event.y + camera.position.y)
+				new THREE.Vector2(event.x + camera.position.x, event.y + camera.position.y)
 			);
 			if (removedLines.length > 0) {
 				globalConnections.forEach((conn) => {
@@ -141,7 +141,11 @@
 		if (currentLine)
 			//TODO: for (event of event.getCoalescedEvents())
 			currentLine.positions.push(
-				new THREE.Vector3(event.x + camera.position.x, event.y + camera.position.y, event.pressure)
+				new THREE.Vector3(
+					event.x + camera.position.x,
+					event.y + camera.position.y,
+					event.pressure * linewidth
+				)
 			);
 	}
 
@@ -177,6 +181,7 @@
 	}
 </script>
 
+<!-- svelte-ignore event_directive_deprecated -->
 <canvas
 	bind:this={canvas}
 	style="position: absolute; top: 0; left: 0; width: 100vw; height: 100vh;"

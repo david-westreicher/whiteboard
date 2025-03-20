@@ -8,6 +8,7 @@
 
 	let peerConnection: PeerJSConnection | null = null;
 	let usePen: boolean = true;
+	let lineWidth: number = 4;
 	onMount(() => {
 		peerConnection = getPeerConnection();
 		if (window.location.hash.startsWith('#server.')) {
@@ -56,6 +57,7 @@
 					<button disabled={!usePen} on:click={handleEraser}>
 						<Icon icon="mdi:eraser" />
 					</button>
+					<input type="range" bind:value={lineWidth} min="1" max="50" />
 				</div>
 				<div class="nav-part">
 					{#each peerConnection.connections}
@@ -71,7 +73,7 @@
 					</button>
 				</div>
 			</nav>
-			<Drawer usepen={usePen} />
+			<Drawer usepen={usePen} linewidth={lineWidth} />
 		</div>
 	{/if}
 </div>
